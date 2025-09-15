@@ -173,6 +173,8 @@ class PiperEnv(gym.Env):
         qpos[4] = 0.976
         qpos[6] = 0.035
         qpos[7] = -0.035
+        qpos = np.zeros(8, dtype=np.float32)
+        qvel = np.zeros(8, dtype=np.float32)
 
         self._set_state(qpos, qvel)
         self._reset_object_pose()
