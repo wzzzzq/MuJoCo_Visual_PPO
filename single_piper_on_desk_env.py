@@ -89,15 +89,6 @@ class PiperEnv(gym.Env):
         
         # Track previous gripper position for movement penalty
         self.prev_gripper_pos = 0.035   # Initialize to open position
-        
-        # Initialize persistent renderer for efficiency
-        self._renderer = None
-        # Always try to create renderer for RGB observations (needed even in headless mode)
-        try:
-            self._renderer = mujoco.Renderer(self.model, height=self.camera_height, width=self.camera_width)
-        except Exception as e:
-            print(f"Warning: Could not initialize renderer: {e}")
-            self._renderer = None
 
     def _get_site_pos_ori(self, site_name: str) -> tuple[np.ndarray, np.ndarray]:
         site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, site_name)
@@ -265,25 +256,20 @@ class PiperEnv(gym.Env):
             self.data.qvel[apple_qveladr:apple_qveladr + 6] = 0.0
 
     def _get_rgb_observation(self, camera_name):
-        """Get RGB camera observation from specified camera."""
+        """Get RGB camera observation from specified camera using the exact same method as official tutorial."""
         # Get camera ID
         camera_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
         if camera_id == -1:
             raise ValueError(f"Camera '{camera_name}' not found")
         
-        # Use persistent renderer for efficiency
-        if self._renderer is None:
-            try:
-                self._renderer = mujoco.Renderer(self.model, height=self.camera_height, width=self.camera_width)
-            except Exception as e:
-                print(f"Warning: Could not create renderer: {e}")
-                # Return dummy RGB array if rendering fails
-                return np.zeros((self.camera_height, self.camera_width, 3), dtype=np.uint8)
-        
         try:
-            self._renderer.update_scene(self.data, camera=camera_id)
-            rgb_array = self._renderer.render()
-            return rgb_array.astype(np.uint8)
+            # Use the exact same pattern as the official MuJoCo tutorial
+            with mujoco.Renderer(self.model, height=self.camera_height, width=self.camera_width) as renderer:
+                # Ensure data is properly updated (following tutorial pattern)
+                mujoco.mj_forward(self.model, self.data)
+                renderer.update_scene(self.data, camera=camera_id)
+                rgb_array = renderer.render()
+                return rgb_array.astype(np.uint8)
         except Exception as e:
             print(f"Warning: Rendering failed: {e}")
             # Return dummy RGB array if rendering fails
@@ -500,9 +486,6 @@ class PiperEnv(gym.Env):
 
     def close(self):
         """Clean up resources"""
-        if self._renderer is not None:
-            self._renderer.close()
-            self._renderer = None
         super().close()
 
     def __del__(self):
