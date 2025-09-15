@@ -92,12 +92,12 @@ class PiperEnv(gym.Env):
         
         # Initialize persistent renderer for efficiency
         self._renderer = None
-        if self.render_mode is None:  # Only create for RGB observations
-            try:
-                self._renderer = mujoco.Renderer(self.model, height=self.camera_height, width=self.camera_width)
-            except Exception as e:
-                print(f"Warning: Could not initialize renderer: {e}")
-                self._renderer = None
+        # Always try to create renderer for RGB observations (needed even in headless mode)
+        try:
+            self._renderer = mujoco.Renderer(self.model, height=self.camera_height, width=self.camera_width)
+        except Exception as e:
+            print(f"Warning: Could not initialize renderer: {e}")
+            self._renderer = None
 
     def _get_site_pos_ori(self, site_name: str) -> tuple[np.ndarray, np.ndarray]:
         site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, site_name)
